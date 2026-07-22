@@ -121,6 +121,13 @@ const totalMacros = computed(() => {
             <p class="text-[10px] text-gray-400 dark:text-gray-500">Workout</p>
           </div>
         </div>
+        <div v-if="store.todayWorkoutCalories > 0" class="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-gray-50 px-2.5 py-2 sm:gap-2.5 sm:px-3 dark:bg-gray-700/50">
+          <span class="text-lg sm:text-xl">🔥</span>
+          <div class="min-w-0">
+            <p class="text-xs font-bold tabular-nums text-orange-600 dark:text-orange-400">{{ store.todayWorkoutCalories }} kcal</p>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500">Terbakar</p>
+          </div>
+        </div>
         <div class="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-gray-50 px-2.5 py-2 sm:gap-2.5 sm:px-3 dark:bg-gray-700/50">
           <span class="text-lg sm:text-xl">🔥</span>
           <div class="min-w-0">

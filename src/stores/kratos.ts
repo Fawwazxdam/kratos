@@ -195,16 +195,6 @@ const defaultTargets: UserTargets = {
   workout_days_per_week: 4,
 }
 
-const defaultWeeklySummaries: DailySummary[] = [
-  { date: relativeDate(-6), total_protein: 132, total_calories: 1980, workout_completed: false, target_achieved: false, reflection_note: '' },
-  { date: relativeDate(-5), total_protein: 148, total_calories: 2150, workout_completed: true, target_achieved: false, reflection_note: 'Leg day brutal' },
-  { date: relativeDate(-4), total_protein: 155, total_calories: 2200, workout_completed: false, target_achieved: true, reflection_note: '' },
-  { date: relativeDate(-3), total_protein: 140, total_calories: 2050, workout_completed: true, target_achieved: false, reflection_note: 'Chest day lancar' },
-  { date: relativeDate(-2), total_protein: 160, total_calories: 2280, workout_completed: false, target_achieved: true, reflection_note: '' },
-  { date: relativeDate(-1), total_protein: 125, total_calories: 1900, workout_completed: true, target_achieved: false, reflection_note: 'Hari libur, makan kurang' },
-  { date: relativeDate(0), total_protein: 157, total_calories: 2120, workout_completed: true, target_achieved: true, reflection_note: 'Push workout keras' },
-]
-
 const defaultProfile: UserBodyStats = {
   weight_kg: 70,
   height_cm: 175,
@@ -261,8 +251,7 @@ function calculateTargets(
 export const useKratosStore = defineStore('kratos', () => {
   const logs = ref<DailyLog[]>([...defaultLogs])
   const targets = ref<UserTargets>({ ...defaultTargets })
-  const weeklySummaries = ref<DailySummary[]>([...defaultWeeklySummaries])
-  const profile = ref<UserBodyStats>({ ...defaultProfile })
+  const profile = ref<UserBodyStats>({...defaultProfile})
 
   const todayLogs = computed(() => {
     const today = new Date().toISOString().slice(0, 10)
@@ -274,12 +263,48 @@ export const useKratosStore = defineStore('kratos', () => {
   })
 
   const todayCalories = computed(() => {
-    return todayLogs.value.reduce((sum, log) => sum + log.calories, 0)
+    return todayLogs.value
+      .filter((log) => log.category === 'NUTRITION')
+      .reduce((sum, log) => sum + log.calories, 0)
+  })
+
+  const todayWorkoutCalories = computed(() => {
+    return todayLogs.value
+      .filter((log) => log.category === 'WORKOUT')
+      .reduce((sum, log) => sum + log.calories, 0)
+  })
+
+  const netCalories = computed(() => {
+    return todayCalories.value - todayWorkoutCalories.value
   })
 
   const proteinProgress = computed(() => {
     if (targets.value.protein_target === 0) return 0
     return (todayProtein.value / targets.value.protein_target) * 100
+  })
+
+  const weeklySummaries = computed<DailySummary[]>(() => {
+    const summaries: DailySummary[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().slice(0, 10)
+      const dayLogs = logs.value.filter((log) => log.date === dateStr)
+      const nutritionLogs = dayLogs.filter((log) => log.category === 'NUTRITION')
+      const workoutLogs = dayLogs.filter((log) => log.category === 'WORKOUT')
+      const totalProtein = nutritionLogs.reduce((sum, log) => sum + log.protein, 0)
+      const totalCalories = nutritionLogs.reduce((sum, log) => sum + log.calories, 0)
+      const workoutCalories = workoutLogs.reduce((sum, log) => sum + log.calories, 0)
+      summaries.push({
+        date: dateStr,
+        total_protein: totalProtein,
+        total_calories: totalCalories - workoutCalories,
+        workout_completed: workoutLogs.length > 0,
+        target_achieved: totalProtein >= targets.value.protein_target,
+        reflection_note: reflections.value[dateStr] ?? '',
+      })
+    }
+    return summaries
   })
 
   const heatmapData = computed(() => {
@@ -331,7 +356,7 @@ export const useKratosStore = defineStore('kratos', () => {
     return {
       date: key,
       total_protein: todayProtein.value,
-      total_calories: todayCalories.value,
+      total_calories: netCalories.value,
       workout_completed: todayLogs.value.some((l) => l.category === 'WORKOUT'),
       target_achieved: todayProtein.value >= targets.value.protein_target,
       reflection_note: todayReflection.value,
@@ -378,7 +403,6 @@ export const useKratosStore = defineStore('kratos', () => {
     localStorage.removeItem('kratos-store')
     logs.value = [...defaultLogs]
     targets.value = { ...defaultTargets }
-    weeklySummaries.value = [...defaultWeeklySummaries]
     reflections.value = {}
     profile.value = { ...defaultProfile }
   }
@@ -391,6 +415,8 @@ export const useKratosStore = defineStore('kratos', () => {
     todayLogs,
     todayProtein,
     todayCalories,
+    todayWorkoutCalories,
+    netCalories,
     proteinProgress,
     weeklySummaries,
     heatmapData,

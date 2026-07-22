@@ -68,6 +68,17 @@ watch([selectedSource, portionCount, isExactMode], () => {
   }
 }, { immediate: true })
 
+watch(category, (val) => {
+  if (val === 'WORKOUT') {
+    const tpl = WORKOUT_TEMPLATES[selectedWorkout.value]!
+    title.value = tpl.name
+    workoutDuration.value = tpl.defaultDuration
+    workoutIntensity.value = tpl.intensity
+    calories.value = workoutCalories.value
+    protein.value = 0
+  }
+})
+
 watch(selectedWorkout, (key) => {
   if (category.value === 'WORKOUT') {
     const tpl = WORKOUT_TEMPLATES[key]!
